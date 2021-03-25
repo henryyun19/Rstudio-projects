@@ -1,0 +1,640 @@
+title: "Final Project"
+author:
+  - 'Henry Yun'
+  - 'Soojung Kim'
+  - 'Hilina Gebre'
+date: "`r Sys.Date()`"
+documentclass: article
+geometry: margin=1in
+fontsize: 11pt
+output:
+  pdf_document:
+    toc: false
+    df_print: kable
+    fig_caption: false
+    number_sections: false
+    dev: pdf
+    highlight: tango
+  html_document:
+    theme: default
+    self_contained: true
+    toc: false
+    df_print: kable
+    fig_caption: false
+    number_sections: false
+    smart: true
+    dev: svg
+---
+
+```{r setup, include = FALSE}
+# DO NOT ALTER THIS CHUNK
+# Set knitr options
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  fig.width = 5,
+  fig.asp = 0.618,
+  out.width = "70%",
+  dpi = 120,
+  fig.align = "center",
+  cache = FALSE
+)
+# Load required packages
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(infer))
+suppressPackageStartupMessages(library(modelr))
+suppressPackageStartupMessages(library(broom))
+# Load dataset
+college <- read_rds("college.rds") %>%
+  type_convert(
+    na=combine("", "NA", "PrivacySuppressed")
+  )
+# Set seed
+set.seed(98261936)
+```
+
+## Preprocessing the dataset
+```{r}
+new_college <- college%>%
+  select(STABBR,INSTNM,INC_PCT_LO,INC_PCT_M1,INC_PCT_M2,INC_PCT_H1,INC_PCT_H2,LOAN_YR4_N,OVERALL_YR4_N,FAMINC,IND_COMP_4YR_TRANS_YR4_RT, DEP_COMP_4YR_TRANS_YR4_RT,SAT_AVG, UNEMP_RATE, CONTROL, LOCALE, SATVRMID, SATWRMID, SATMTMID)
+```
+
+```{r}
+college_filtered <- new_college %>%
+  filter(IND_COMP_4YR_TRANS_YR4_RT != 'NA' , DEP_COMP_4YR_TRANS_YR4_RT != 'NA',INC_PCT_LO != 'N/A', INC_PCT_M1 != 'N/A', INC_PCT_M2 != 'N/A' , INC_PCT_H1 != 'N/A',INC_PCT_H2 != 'N/A', LOAN_YR4_N != 'N/A',SAT_AVG != "NA", UNEMP_RATE != "NA", SATVRMID != "NA",SATWRMID != "NA", SATMTMID != "NA" )
+```
+
+## Exploratory data analysis
+
+# Question 1 By Hilina Gerbre: Is there a significant difference between dependent students who transferred to a 4-year institution and completed within 2-year and independent students who transferred to a 4-year institution and completed within two years? 
+
+```{r}
+college_filtered%>%
+ggplot()+
+  geom_histogram(mapping= aes(x = IND_COMP_4YR_TRANS_YR4_RT),bins= 55, color= "BLue")
+```
+
+The graph for the independent students who are completing the four year univeristy is right-skewed histogram which tells us that the mean is greater than the median. It also shows that the values fall on postive side of the graph but also made it harder to distinguish the center point.
+
+```{r}
+college_filtered%>%
+ggplot()+
+  geom_histogram(mapping= aes(x = DEP_COMP_4YR_TRANS_YR4_RT),bins= 55, color = "Yellow")
+```
+
+The histogram for the dependent  students who are completing the four year university is right skewed just like the independent students, however there are more number of students in this case which made the graph looks more spread out. 
+
+## Graphed together to vizualise better 
+
+```{r}
+college_filtered%>%
+ggplot()+
+  geom_histogram(mapping= aes(x = IND_COMP_4YR_TRANS_YR4_RT),bins= 55, color= "BLue")+
+  geom_histogram(mapping= aes(x = DEP_COMP_4YR_TRANS_YR4_RT),bins= 55, color= "Yellow")
+```
+
+Having plotted the histograms together, it is observed that the independent students is more likely to graduate after the transfer compared to the dependent students. Since both histograms are right skewed it is harder to distinguish the center. The reason why I used histograms to represent this data is because the values in this data is continous and histograms are better way to see the major differences.
+
+### Visualization using CDF 
+
+```{r}
+college_filtered%>%
+ggplot(aes())+
+  geom_step(mapping = aes(x = IND_COMP_4YR_TRANS_YR4_RT ), stat = "ecdf", color = 'Green') +
+  labs(y = "CDF") + 
+  geom_step(mapping = aes(x = DEP_COMP_4YR_TRANS_YR4_RT ), stat = "ecdf", color = 'orange') +
+  labs(y = "CDF") 
+```
+
+According to this CDF graph, they overlap when they start and after the interval of 0.1 approximately. The gap that is shown between that time interval shows that independents were greater in number than the Dependent students. It also shows that at 0.1 interval the independent students reaches 100 percent.
+
+### Summary Statistics 
+
+```{r}
+college_filtered %>%
+  group_by( )%>%
+  summarize(
+    mean= mean(DEP_COMP_4YR_TRANS_YR4_RT),
+    median= median(DEP_COMP_4YR_TRANS_YR4_RT),
+    sd= sd(DEP_COMP_4YR_TRANS_YR4_RT),
+    iqr= IQR(DEP_COMP_4YR_TRANS_YR4_RT),
+    minimum= min(DEP_COMP_4YR_TRANS_YR4_RT),
+    maximum= max(DEP_COMP_4YR_TRANS_YR4_RT)
+    
+  )
+```
+
+```{r}
+college_filtered %>%
+  group_by( )%>%
+  summarize(
+    mean= mean(IND_COMP_4YR_TRANS_YR4_RT),
+    median= median(IND_COMP_4YR_TRANS_YR4_RT),
+    sd= sd(IND_COMP_4YR_TRANS_YR4_RT),
+    iqr= IQR(IND_COMP_4YR_TRANS_YR4_RT),
+    minimum= min(IND_COMP_4YR_TRANS_YR4_RT),
+    maximum= max(IND_COMP_4YR_TRANS_YR4_RT)
+    
+  )
+```
+
+The mean and median for Independent students are greater than the Dependent students which tells us that the number of the independent students are more likely to  graduate from four year univeristy than the Dependent students. The iqr is small which tells us the data is compacted and not disperesed as much, however the iqr for dependent is greater than the independent students iqr which I was able to see on the graphs plotted.
+
+## Since we are interested in finding out if there is a signinificant difference between independent and dependent students who are able to complete after they transfered to 4 year university; We will apply hypothesis test.
+
+
+## Null hypothesis: Independent Students and Dependent students are independent in completing 4 year university after transferring from two years of community college.
+
+```{r}
+Gathered_Val <- college_filtered %>%
+  gather(
+    IND_COMP_4YR_TRANS_YR4_RT,
+    DEP_COMP_4YR_TRANS_YR4_RT,
+    key = "Type_of_Students",
+    value= "Completion_Rate"
+  )
+```
+
+```{r}
+IND_DEP_NULL <- Gathered_Val%>%
+  specify(Completion_Rate ~ Type_of_Students) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps=10000, type= "permute") %>%
+  calculate(stat="diff in means", order= combine("IND_COMP_4YR_TRANS_YR4_RT", "DEP_COMP_4YR_TRANS_YR4_RT"))
+```
+
+```{r}
+IND_DEP_NULL_OBS <- Gathered_Val %>%
+  specify(formula =Completion_Rate ~ Type_of_Students) %>%
+  calculate(stat="diff in means", order= combine("IND_COMP_4YR_TRANS_YR4_RT", "DEP_COMP_4YR_TRANS_YR4_RT"))
+```
+
+```{r}
+    IND_DEP_NULL%>%
+      get_p_value(obs_stat = IND_DEP_NULL_OBS, direction = "right")
+```
+Since the value of p_value is one, we reject the null hypothesis.
+
+
+```{r}
+    IND_DEP_NULL%>%
+      visualize() +
+      shade_p_value(obs_stat = IND_DEP_NULL_OBS, direction = "right")
+```
+
+```{r}
+Gathered_Val_bootstrap <- Gathered_Val %>%
+  specify(formula =Completion_Rate ~ Type_of_Students) %>%
+  generate(resp = 10000, type = "bootstrap")%>%
+  calculate(stat="diff in means", order= combine("IND_COMP_4YR_TRANS_YR4_RT", "DEP_COMP_4YR_TRANS_YR4_RT"))
+```
+
+```{r}
+Gathered_Val_bootstrap_interval <- Gathered_Val_bootstrap %>%
+   get_confidence_interval()
+get_confidence_interval(Gathered_Val_bootstrap)
+```
+
+Since the values came out to be negative, it was not possible to capture the 95 percent interval.Eventhough based on our statstics the independent are higher than the dependent , the confidence interval suggest that there could be a chance that dependent students could be greater somewhere in the line.
+
+
+# Qustion 2 By Soojung Kim: If the college admission standards are low, is unemployment rate of the college likely to be high?
+
+This question might be able to figure out the relationship between college admission standards and the unemployment rate. Generally, people might think that college with low admission standards tend to have high unemployment rate because students who performed better on exams and studied hard in high school might get a job more easily. I wanted to test if these common thoughts are right. 
+To solve this question, I will use two variables "SAT_AVG" and "UNEMP_RATE". "SAT_AVG" which is a average SAT score can be criteria of admission standards and "UNEMP_RATE" which is measured unemployment rate can be the criteria of unemployment rate.
+Further, for more analysis, I will build the model for each subject scores (critical reading, writing, and math) to see which subject affects to unemployment the most.
+
+## 1. Data Visualization
+
+```{r, fig.width= 10}
+# Creating scatter plot between SAT average score and unemployment rate
+ggplot(data = college_filtered) +
+  geom_point(mapping = aes(x = SAT_AVG, y = UNEMP_RATE))
+```
+
+The scatterplot that shows relationship between SAT_AVG, which represents average SAT equivalent score of students admitted, and UNEMP_RATE, which is an unemployment rate of each college, indicates the trend that the unemployment rate decreases as SAT_AVG increases.
+
+For further analysis, let's see the relationship between each subject SAT score and unemployment rate. 
+
+```{r, fig.width= 10}
+# Creating scatter plot between SAT critical reading score and unemployment rate
+ggplot(data = college_filtered) +
+  geom_point(mapping = aes(x = SATVRMID, y = UNEMP_RATE))
+```
+
+```{r, fig.width= 10}
+# Creating scatter plot between SAT writing score and unemployment rate
+ggplot(data = college_filtered) +
+  geom_point(mapping = aes(x = SATWRMID, y = UNEMP_RATE))
+```
+
+```{r, fig.width= 10}
+# Creating scatter plot between SAT math score and unemployment rate
+ggplot(data = college_filtered) +
+  geom_point(mapping = aes(x = SATMTMID, y = UNEMP_RATE))
+```
+
+In all three graphs each of which shows the relationship between SAT critical reading, writing, and math score, unemployment rate tends to decrease as the score increases.
+
+```{r}
+# Creating line graph that shows the relationship between SAT average score and unemployment rate
+ggplot(data = college_filtered) +
+geom_smooth(mapping = aes(x = SAT_AVG, y = UNEMP_RATE))
+```
+
+The geom_smooth graph also shows that the unemployment rate decreases when a college has high admission standards.
+
+```{r}
+# Creating line graph that shows the relationship between 
+# SAT critical reading score and unemployment rate
+ggplot(data = college_filtered) +
+geom_smooth(mapping = aes(x = SATVRMID, y = UNEMP_RATE))
+```
+
+```{r}
+# Creating line graph that shows the relationship between 
+# SAT writing score and unemployment rate
+ggplot(data = college_filtered) +
+geom_smooth(mapping = aes(x = SATWRMID, y = UNEMP_RATE))
+```
+
+```{r}
+# Creating line graph that shows the relationship between 
+# SAT math score and unemployment rate
+ggplot(data = college_filtered) +
+geom_smooth(mapping = aes(x = SATMTMID, y = UNEMP_RATE))
+```
+
+The graphs with the score of each subject also show that the unemployment rate decreases as the score goes high.
+
+To find out the effects of some other variables to unemployement rate, I faceted the graph with possible variables like LOCALE (the degree of urbanization of the area) and CONTROL (the ownership of the institution).
+
+```{r, fig.width = 14}
+# Faceting with LOCALE, which shows the type of regions classified 
+# with the degree of urbanization
+ggplot(data = college_filtered) +
+  geom_point(mapping = aes(x = SAT_AVG, y = UNEMP_RATE)) +
+  facet_wrap(.~ LOCALE)
+```
+
+This is a scatterplot with the relationship between SAT_AVG and UNEMP_RATE faceted with LOCALE variable, which shows whether the institution is in city, suburb, town, or rural area. Referred to data dictionary, 11, 12, 13 are considered as city, 21, 22, 23 are considered as suburb, 31, 32, 33 are considered as town, and 41, 42, 43 are considered as rural area. According to the graph, it shows that unemployment rate is low as admission standards are high and also, as an institution is located in more urbanized area, unemployment rate of the institution is higher.
+
+```{r, fig.width = 14}
+# Faceting with CONTROL which shows whether the school is public, 
+# private  nonprofit, or private for-profit
+ggplot(data = college_filtered) +
+  geom_point(mapping = aes(x = SAT_AVG, y = UNEMP_RATE)) +
+  facet_wrap(.~ CONTROL)
+```
+
+This is a scatterplot with the relationship between SAT_AVG and UNEMP_RATE faceted with CONTROL variable, which shows whether the institution is public, private non-profit, or private for-profit. Referred to data dictionary, 1 is public college, 2 is private non-profit college, and 3 is private for-profit college. According to the graph, it shows that colleges in the data are mostly public or private nonprofit except 4 rows. Also, we can get an insight that the private nonprofit institutions have higher admission standards when measuring it with SAT score. The relationship between admission standards and unemployment rate, which shows that unemployment rate is lower as admission standards are high, is same with trends that are shown in graphs above.
+
+Analyzing both two graphs, there seem to be no special effect of other variables.
+
+So I'll come back to the relationship between SAT score and unemployment rate.
+
+```{r}
+# Creating boxplot to figure out the presence of outliers
+ggplot(data = college_filtered) + 
+  geom_boxplot(mapping = aes(x = SAT_AVG, y = UNEMP_RATE))
+```
+
+```{r}
+# Creating boxplot to figure out the presence of outliers
+ggplot(data = college_filtered) + 
+  geom_boxplot(mapping = aes(x = SATVRMID, y = UNEMP_RATE))
+```
+
+```{r}
+# Creating boxplot to figure out the presence of outliers
+ggplot(data = college_filtered) + 
+  geom_boxplot(mapping = aes(x = SATWRMID, y = UNEMP_RATE))
+```
+
+```{r}
+# Creating boxplot to figure out the presence of outliers
+ggplot(data = college_filtered) + 
+  geom_boxplot(mapping = aes(x = SATMTMID, y = UNEMP_RATE))
+```
+
+Since all of the variables (SAT_AVG, SATVRMID, SATWRMID, SATMTMID) have outliers at the point where unemployment rate is more than 6, I will filter out those data.
+
+```{r}
+# Excluding rows with outliers
+college_question1_filtered <- college_filtered %>%
+  filter(UNEMP_RATE < 6)
+```
+
+## 2. Summary Statistics
+
+```{r}
+# Creating summary statistics
+college_question1_filtered %>% 
+  group_by(UNEMP_RATE)  %>%
+  summarize(
+    mean = mean(SAT_AVG), 
+    median = median(SAT_AVG), 
+    sd = sd(SAT_AVG),
+    iqr = IQR(SAT_AVG), 
+    minimum = min(SAT_AVG), 
+    maximum = max(SAT_AVG)) %>%
+head()
+```
+
+## 3. Modeling
+
+```{r}
+# Creating a linear regression model
+unemp_avg_model <- lm(UNEMP_RATE ~ SAT_AVG, data = college_question1_filtered)
+```
+
+```{r}
+# Getting an information of optimal slope and intercept to fit the data
+unemp_avg_model %>%
+  tidy()
+```
+
+```{r}
+# Getting an information about R^2^
+unemp_avg_model %>% 
+  glance() %>%
+  select(r.squared)
+```
+
+This is an additional information about the model. In order to find out how well the model fits the data, I will focus on R^2^. If it is closer to 1, the model is doing a better job but if it is closer to 0, the model is doing a poor job. The value of 0.1 means that the model is doing a poor job. But we need to clarify other conditions that make sure that the model is reliable.
+
+There are three conditions:
+
+1. Linearity: The relationship between the explanatory variable and the response variable must be linear
+
+2. Nearly normal residuals: The residuals should be nearly normal (i.e. follow a bell curve shape)
+
+3. Constant variability: The variability of the points around the model line should be roughly constant
+
+In order to clarify these conditions, I will make some graphs.
+
+```{r}
+# Adding predictions and residuals to the data frame
+unemp_avg_df <- college_question1_filtered %>% 
+  add_predictions(unemp_avg_model) %>%  
+  add_residuals(unemp_avg_model)
+```
+
+```{r}
+# Creating visualization of the model
+ggplot(unemp_avg_df) +
+geom_point(mapping = aes(x = SAT_AVG, y = UNEMP_RATE)) +
+geom_abline(slope = unemp_avg_model$coefficients[2], intercept = unemp_avg_model$coefficients[1])
+```
+
+This plot indicates that the relationship between explanatory variable (SAT_AVG) and response variable (UNEMP_RATE) shows linear trend.
+
+```{r}
+# Creating observed versus predicted plot
+ggplot(unemp_avg_df) + geom_point(aes(pred, UNEMP_RATE)) + geom_abline(
+    slope = 1,
+    intercept = 0,
+    color = "red",
+    size = 1)
+```
+
+This plot that shows the relationship between predicted and observed indicate that the variability of the points around the model line is mostly constant but the part with the UNEMP_RATE more than 4.0 violates the condition of constant variability.
+
+```{r}
+# Creating a histogram that shows the distribution of residuals
+ggplot(data = unemp_avg_df) + 
+  geom_histogram(mapping = aes(x = resid), binwidth = 0.1)
+```
+
+This histogram shows that the distribution is right-skewed. So the residuals are not normal.
+
+```{r}
+# Creating Q-Q plot to make sure that nearly normal residuals condition is violated
+ggplot(data = unemp_avg_df) + 
+  geom_qq(mapping = aes(sample = resid)) + 
+  geom_qq_line(mapping = aes(sample = resid))
+```
+
+Since this Q-Q plot shows that residuals are deviated from normal, we can conclude that the condition is violated.
+
+The violation of conditions and low value of R^2^ show that the model is not that reliable, so we can conclude that unemployment rate is not always going low when admission standards are high. However, the prediction and the data show that there is a trend that unemployment rate is low as admission standards are high.
+
+Then, I'll build models and look for R^2^ to figure out which subject affects to unemployment rate the most. 
+
+```{r}
+# Creating a linear regression model of SAT critical reading score
+unemp_vr_model <- lm(UNEMP_RATE ~ SATVRMID , data = college_question1_filtered)
+```
+
+```{r}
+# Getting an information of optimal slope and intercept to
+# fit the data
+unemp_vr_model %>%
+  tidy()
+```
+
+```{r}
+# Getting an informatiion about R^2^
+unemp_vr_model %>% 
+  glance() %>%
+  select(r.squared)
+```
+
+```{r}
+# Creating a linear regression model of SAT writing score
+unemp_wr_model <- lm(UNEMP_RATE ~ SATWRMID, data = college_question1_filtered)
+```
+
+```{r}
+# Getting an information of optimal slope and intercept 
+# to fit the data
+unemp_wr_model %>%
+  tidy()
+```
+
+```{r}
+# Getting an informatiion about R^2^
+unemp_wr_model %>% 
+  glance() %>%
+  select(r.squared)
+```
+
+
+```{r}
+# Creating a linear regression model for SAT math score
+unemp_mt_model <- lm(UNEMP_RATE ~ SATMTMID, data = college_question1_filtered)
+```
+
+```{r}
+# Getting an information of optimal slope and intercept 
+# to fit the data
+unemp_mt_model %>%
+  tidy()
+```
+
+```{r}
+# Getting an informatiion about R^2^
+unemp_mt_model %>% 
+  glance() %>%
+  select(r.squared)
+```
+
+Since the model of SAT critical reading score has R^2^ that is closest to 1, we can conclude that critical reading subject has more relationship with unemployment rate than other subjects.
+
+#Question 3 By Henry Yun: Of those that live in the top 5 most populated states. Based on the average family income, how many studetns take out a loan during their 4 year cohart?
+
+## Data Visualization
+
+In order to target only the top 5 most populated states, it is filtered out getting rid of the other states.
+
+```{r}
+target <- c('CA','TX','FL','NY','IL')
+loan10 <- filter(college_filtered, STABBR %in% target)
+```
+
+Now that the states are set , using the percentage of the low, mid, and high income families. The data is mutated to bring out the eaxct number of low, mid, and high income families that go to the school.
+```{r}
+loan_math <- loan10%>%
+  mutate(LO_INC = LOAN_YR4_N * INC_PCT_LO, MD_INC = LOAN_YR4_N * (INC_PCT_M1 + INC_PCT_M2), HI_INC = LOAN_YR4_N * (INC_PCT_H1 + INC_PCT_H2))
+```
+
+As seen below, the Average family income for each state with most families being under 50000 dollars. The State that has the most familles above 100000 living in NY 
+```{r,fig.width=10}
+ggplot(data = loan_math) + 
+  geom_histogram(mapping = aes(FAMINC), bins = 10)+
+  facet_wrap(vars(STABBR))
+```
+
+As this data chart there seems to be a negative correlation of those who have a higher average family income either don't take any loans or take very few. And as seen from the chart above NY has an average of higher family income Causing less people to take loans or people to take little loans
+
+```{r,fig.width = 10}
+ggplot(data = loan_math) +
+  geom_point(mapping = aes(x = FAMINC, y = LOAN_YR4_N, color = STABBR))
+```
+
+Then to further prove that lower family income results in more loans, the relationship between the two were made for each state.
+The results showing that as the family income were lower, the amount of people that decided to take a loan for college also increased.
+
+```{r,fig.width = 10}
+ggplot(data = loan_math) +
+  geom_point(mapping = aes(x = LO_INC, y = LOAN_YR4_N))+
+  facet_grid(vars(STABBR))
+```
+
+The chart below further clarfies the chart above showing the times the amount of students applied for a loan depending on their family income.
+```{r}
+ggplot(data = loan_math, aes(FAMINC,LOAN_YR4_N)) +
+  geom_bin2d()
+```
+
+Another Great visual is the one below, as there are spikes in crease of people taking loans for the ones with lower family income, then a gradual decrease as the average family income gets higher.
+```{r,fig.width = 10}
+ggplot(data = loan_math) +
+  geom_smooth(mapping = aes(x = FAMINC, y = LOAN_YR4_N))
+```
+
+
+Now that the overall Loan students have been compared to their average family income. Its time to see in a more detailed manner such out of the ones that got a loan. What state and class are they from. Starting with low income families.
+```{r,fig.width= 10}
+ggplot(data = loan_math) +
+  geom_histogram(mapping = aes(LO_INC, fill = STABBR), bins = 10)
+```
+
+```{r,fig.width= 10}
+ggplot(data = loan_math) +
+  geom_histogram(mapping = aes(MD_INC, fill = STABBR), bins = 10)
+```
+
+```{r,fig.width= 10}
+ggplot(data = loan_math) +
+  geom_histogram(mapping = aes(HI_INC, fill = STABBR), bins = 10)
+```
+Though all  three of these graph look very familiar, it is important to remember that Each state has different population. Also the axis shows that there are less high income family compared to low and middle income families.
+
+```{r,fig.width=10}
+loan_math%>%
+  ggplot()+
+  geom_histogram(mapping = aes(FAMINC),bins=10)
+```
+This shows that overall the distrbution between the family incomes are quite spread out with the most being middle class families
+
+## Summarization of data
+
+Now that the data has been visualized to understand easier, it is  time to summarize it
+
+
+```{r}
+loan_math%>%
+  group_by(`LOAN_YR4_N`)%>%
+  summarize(mean = mean(FAMINC),
+            median = median(FAMINC),
+            min = min(FAMINC),
+            max = max(FAMINC),
+            sd = sd(FAMINC),
+            iqr = IQR(FAMINC)
+            )
+```
+
+## Models
+
+Now with all the given data, a model can be made
+
+```{r}
+AvgFamInc <- lm(LOAN_YR4_N ~ FAMINC, data = loan_math)
+```
+
+```{r}
+AvgFamInc%>%
+  tidy()
+```
+
+```{r}
+AvgFamInc%>%
+  glance()
+```
+The models job is to be able to predict the future and in order to see if the model is doing the job that is was made the do, the value of the r squares determines that so. If the r squared is closer to 1 the better the model and if it is close to 0 the worst. It seems that the model is not an effective one. However, with certain rules we can determine that the model is still reliable.
+
+```{r}
+AvgFamIncdf <- loan_math%>%
+  add_predictions(AvgFamInc)%>%
+  add_residuals(AvgFamInc)
+```
+
+
+
+After adding the predicted and residuals. Now its time to visually test the model and see whether there is a correlation between the two data set
+
+```{r}
+ggplot(data = AvgFamIncdf,aes(FAMINC,LOAN_YR4_N)) +
+  geom_point()+
+  geom_smooth(method=lm
+  )
+```
+
+```{r}
+ggplot(AvgFamIncdf) +
+  geom_point(aes(pred, LOAN_YR4_N)) +
+  geom_abline(
+    slope = 1,
+    intercept = 0,
+    color = "red",
+    size = 1
+  )
+```
+
+```{r}
+ggplot(AvgFamIncdf) +
+  geom_point(aes(pred, resid)) +
+  geom_ref_line(h = 0)
+```
+
+After seeing both graphs, it can be concluded that the model is reliable. As the first model shows the increase in income showing a decrese in loans, while the second graph shows the relationship of the predticed and observed.
+
+```{r}
+ggplot(data = AvgFamIncdf) +
+  geom_qq(mapping = aes(sample = resid)) +
+  geom_qq_line(mapping = aes(sample = resid))
+```
+
+Seeing the Graph of the QQ, it does show that there are extreme deviation from the line concluding that this model is not effective or reliable. However from the graphs from above show that the predictions of lower family income the higher the amount of loans for college.
+
